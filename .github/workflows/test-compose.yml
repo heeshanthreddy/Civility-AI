@@ -1,0 +1,45 @@
+name: Test Docker Compose
+
+on:
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'docker-compose.yml'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build with docker-compose
+        run: |
+          docker-compose build
+
+      - name: Start services
+        run: |
+          docker-compose up -d
+          sleep 10
+
+      - name: Health check backend
+        run: |
+          docker-compose exec -T backend curl -f http://localhost:8000/ || exit 1
+
+      - name: Health check frontend
+        run: |
+          docker-compose exec -T frontend curl -f http://localhost/ || exit 1
+
+      - name: View logs on failure
+        if: failure()
+        run: |
+          docker-compose logs
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker-compose down
